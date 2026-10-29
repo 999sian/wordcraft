@@ -29,12 +29,12 @@ mod tabs;
 
 pub use bidi::{bidi_levels, visual_order};
 pub(crate) use builder::left_out;
-pub(crate) use chars::shaping_features;
 #[cfg(test)]
 use chars::{MISSING_ROMAN_FONT, lookup_family};
 pub(crate) use chars::{caps_char, push_caps};
 #[cfg(test)]
 pub(crate) use chars::{remap_range, thai_run_face};
+pub(crate) use chars::{script_features, shaping_features};
 pub use grid::{Exclusion, Grid, is_east_asian};
 #[cfg(test)]
 use lines::break_lines;

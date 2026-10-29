@@ -1,6 +1,7 @@
 use super::bidi::{Dir, bidi_levels, strong_rtl, visual_order};
 use super::chars::{
-    SegKey, caps_expands, context_digit_dirs, is_mark, is_numeral_digit, lookup_family, remap_range, shaping_features, thai_run_face, upper_char,
+    SegKey, caps_expands, context_digit_dirs, is_mark, is_numeral_digit, lookup_family, remap_range, script_features, shaping_features,
+    thai_run_face, upper_char,
 };
 use super::grid::east_asian;
 use super::model::{ClKind, Cluster, Enclosed, Glyph, ParaEnv, RubyLayout, StyleRun, SymbolRun};
@@ -274,12 +275,12 @@ impl<'a> Builder<'a> {
                     c
                 }
             };
-            let (features, count) = shaping_features(rc, shape_text);
-            let features = &features[..count];
+            let features = shaping_features(rc);
+            let features = |text: &str| script_features(&features, text);
             let shaped = if use_levels {
-                wordcraft_fonts::shape_run(&st.face, shape_text, features, map, key.rtl)
+                wordcraft_fonts::shape_run_with_features(&st.face, shape_text, features, map, key.rtl)
             } else {
-                wordcraft_fonts::shape(&st.face, shape_text, features, map)
+                wordcraft_fonts::shape_with_features(&st.face, shape_text, features, map)
             };
             let k = st.size / st.face.upem.max(1.0) as f32;
             let hscale = rc.scale / 100.0;

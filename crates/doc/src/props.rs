@@ -105,10 +105,29 @@ mod tests {
     }
 
     #[test]
-    fn saved_ligature_flags_migrate_to_names() {
+    fn ligature_modes_and_saved_flags() {
         use serde_json::{from_value, json, to_value};
-        for mode in Ligatures::ALL {
-            let (standard, contextual, historical, discretional) = mode.features();
+        let expected = [
+            (Ligatures::None, (false, false, false, false)),
+            (Ligatures::Standard, (true, false, false, false)),
+            (Ligatures::Contextual, (false, true, false, false)),
+            (Ligatures::Historical, (false, false, true, false)),
+            (Ligatures::Discretional, (false, false, false, true)),
+            (Ligatures::StandardContextual, (true, true, false, false)),
+            (Ligatures::StandardHistorical, (true, false, true, false)),
+            (Ligatures::ContextualHistorical, (false, true, true, false)),
+            (Ligatures::StandardDiscretional, (true, false, false, true)),
+            (Ligatures::ContextualDiscretional, (false, true, false, true)),
+            (Ligatures::HistoricalDiscretional, (false, false, true, true)),
+            (Ligatures::StandardContextualHistorical, (true, true, true, false)),
+            (Ligatures::StandardContextualDiscretional, (true, true, false, true)),
+            (Ligatures::StandardHistoricalDiscretional, (true, false, true, true)),
+            (Ligatures::ContextualHistoricalDiscretional, (false, true, true, true)),
+            (Ligatures::All, (true, true, true, true)),
+        ];
+        for (mode, flags) in expected {
+            assert_eq!(mode.features(), flags, "{mode:?}");
+            let (standard, contextual, historical, discretional) = flags;
             let props: CharProps = from_value(json!({"ligatures": {
                 "standard": standard, "contextual": contextual, "historical": historical, "discretional": discretional
             }}))

@@ -6205,20 +6205,21 @@ fn graphic_items_draw_inside_the_object() {
 }
 
 #[test]
-fn graphic_khmer_text_preserves_script_defaults() {
+fn graphic_mixed_script_text_keeps_ligature_selection() {
     use wordcraft_doc::graphic::{Graphic, GraphicItem, TextAlign};
     use wordcraft_doc::props::Ligatures;
-    // A mixed label makes the exception observable with a bundled font's contextual
-    // substitutions, without depending on an installed Khmer font.
-    let text = "-> != === \u{1780}";
+    use wordcraft_fonts::{feature_value, shape};
+    // Real Latin letters on both sides establish separate script spans. The bundled
+    // font makes contextual substitutions observable without an installed Khmer face.
+    let (prefix, khmer, suffix) = ("Latin -> != === ", "\u{1780} ", "Latin -> != ===");
+    let text = format!("{prefix}{khmer}{suffix}");
     let face = wordcraft_fonts::word::resolve("JetBrains Mono", false, false).face;
-    let gids = |features: &[wordcraft_fonts::Feature]| wordcraft_fonts::shape(&face, text, features, |c| c).iter().map(|g| g.gid).collect::<Vec<_>>();
-    let expected = gids(&[]);
-    assert_ne!(expected, gids(&[wordcraft_fonts::feature_value(b"calt", 0)]), "the font makes disabling calt observable");
+    let gids = |text: &str, features: &[wordcraft_fonts::Feature]| shape(&face, text, features, |c| c).iter().map(|g| g.gid).collect::<Vec<_>>();
+    assert_ne!(gids(prefix, &[]), gids(prefix, &[feature_value(b"calt", 0)]), "the font has contextual substitutions");
     let graphic = Graphic {
         items: vec![GraphicItem::Text {
-            rect: [0.0, 0.0, 216.0, 30.0],
-            text: text.into(),
+            rect: [0.0, 0.0, 400.0, 30.0],
+            text: text.clone(),
             size: 12.0,
             color: Rgb::BLACK,
             bold: false,
@@ -6228,19 +6229,21 @@ fn graphic_khmer_text_preserves_script_defaults() {
         ..Default::default()
     };
     let mut d = Document::new();
-    let object = InlineObject::Graphic { w: 216.0, h: 30.0, alt: String::new(), float: Default::default(), graphic: Arc::new(graphic) };
+    let object = InlineObject::Graphic { w: 400.0, h: 30.0, alt: String::new(), float: Default::default(), graphic: Arc::new(graphic) };
     d.insert_object(&Pos::body(0, 0), object, &Default::default()).unwrap();
-    for mode in [Ligatures::None, Ligatures::All] {
+    for (mode, calt) in [(Ligatures::None, 0), (Ligatures::Contextual, 1)] {
+        let features = [feature_value(b"liga", 0), feature_value(b"calt", calt), feature_value(b"hlig", 0), feature_value(b"dlig", 0)];
+        let expected: Vec<_> = gids(prefix, &features).into_iter().chain(gids(khmer, &[])).chain(gids(suffix, &features)).collect();
         d.styles.default_chr.ligatures = Some(mode);
         let draws = flat(display::page_display(&d, &lay(&d).pages[0], &Default::default()));
         let actual = draws
             .iter()
             .find_map(|draw| match draw {
-                display::Draw::Glyphs { text: label, glyphs, .. } if label == text => Some(glyphs.iter().map(|g| g.0).collect::<Vec<_>>()),
+                display::Draw::Glyphs { text: label, glyphs, .. } if label == &text => Some(glyphs.iter().map(|g| g.0).collect::<Vec<_>>()),
                 _ => None,
             })
             .expect("graphic text");
-        assert_eq!(actual, expected, "{mode:?} must not override Khmer script defaults");
+        assert_eq!(actual, expected, "{mode:?}: selected Latin features and default Khmer features");
     }
 }
 

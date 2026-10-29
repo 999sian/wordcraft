@@ -37,13 +37,15 @@ pub(crate) fn push_caps(rc: &ResolvedChar, c: char, out: &mut String) {
 }
 
 /// Explicit optional typography, leaving required script features to the shaper.
-pub(crate) fn shaping_features(rc: &ResolvedChar, text: &str) -> ([wordcraft_fonts::Feature; 5], usize) {
+pub(crate) fn shaping_features(rc: &ResolvedChar) -> [wordcraft_fonts::Feature; 5] {
     let f = |tag: &[u8; 4], on: bool| wordcraft_fonts::feature_value(tag, on as u32);
     let (liga, calt, hlig, dlig) = rc.ligatures.features();
-    let features = [f(b"kern", rc.kerned()), f(b"liga", liga), f(b"calt", calt), f(b"hlig", hlig), f(b"dlig", dlig)];
-    // Preserve Khmer's script defaults in paragraphs and graphic text alike.
-    let count = if text.chars().any(is_khmer) { 1 } else { features.len() };
-    (features, count)
+    [f(b"kern", rc.kerned()), f(b"liga", liga), f(b"calt", calt), f(b"hlig", hlig), f(b"dlig", dlig)]
+}
+
+/// Preserve Khmer defaults only within one itemized script span, not its neighbours.
+pub(crate) fn script_features<'a>(features: &'a [wordcraft_fonts::Feature; 5], text: &str) -> &'a [wordcraft_fonts::Feature] {
+    if text.chars().any(is_khmer) { &features[..1] } else { features }
 }
 
 /// A Khmer letter, sign or digit (U+1780–U+17FF, Khmer Symbols U+19E0–U+19FF).
