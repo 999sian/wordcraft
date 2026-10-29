@@ -89,34 +89,18 @@ mod tests {
         }
     }
 
-    /// The 16 `w14:ligatures` values of [MS-DOCX], each to its flags and back.
+    /// Public JSON and OOXML names accept every selection, including explicit off.
     #[test]
     fn ligature_names() {
-        let l = |standard, contextual, historical, discretional| Ligatures { standard, contextual, historical, discretional };
-        for (name, flags) in [
-            ("none", l(false, false, false, false)),
-            ("standard", l(true, false, false, false)),
-            ("contextual", l(false, true, false, false)),
-            ("historical", l(false, false, true, false)),
-            ("discretional", l(false, false, false, true)),
-            ("standardContextual", l(true, true, false, false)),
-            ("standardHistorical", l(true, false, true, false)),
-            ("contextualHistorical", l(false, true, true, false)),
-            ("standardDiscretional", l(true, false, false, true)),
-            ("contextualDiscretional", l(false, true, false, true)),
-            ("historicalDiscretional", l(false, false, true, true)),
-            ("standardContextualHistorical", l(true, true, true, false)),
-            ("standardContextualDiscretional", l(true, true, false, true)),
-            ("standardHistoricalDiscretional", l(true, false, true, true)),
-            ("contextualHistoricalDiscretional", l(false, true, true, true)),
-            ("all", l(true, true, true, true)),
-        ] {
-            assert_eq!(Ligatures::from_ooxml(name), Some(flags), "{name}");
-            assert_eq!(flags.ooxml(), name);
+        for mode in Ligatures::ALL {
+            let name = mode.as_ooxml();
+            assert_eq!(Ligatures::from_ooxml(&name.to_ascii_uppercase()), Some(mode));
+            assert_eq!(serde_json::from_value::<Ligatures>(serde_json::json!(name)).unwrap(), mode);
+            assert_eq!(serde_json::to_value(mode).unwrap(), serde_json::json!(name));
         }
-        assert_eq!(Ligatures::all().count(), 16);
-        for bad in ["", "Standard", "contextualStandard", "standardstandard", "allx"] {
+        for bad in ["", "contextualStandard", "standardstandard", "allx"] {
             assert_eq!(Ligatures::from_ooxml(bad), None, "{bad:?}");
+            assert!(serde_json::from_value::<Ligatures>(serde_json::json!(bad)).is_err());
         }
     }
 

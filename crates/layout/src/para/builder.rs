@@ -1,6 +1,6 @@
 use super::bidi::{Dir, bidi_levels, strong_rtl, visual_order};
 use super::chars::{
-    SegKey, caps_expands, context_digit_dirs, is_khmer, is_mark, is_numeral_digit, ligature_features, lookup_family, remap_range, thai_run_face,
+    SegKey, caps_expands, context_digit_dirs, is_khmer, is_mark, is_numeral_digit, lookup_family, remap_range, shaping_features, thai_run_face,
     upper_char,
 };
 use super::grid::east_asian;
@@ -224,7 +224,6 @@ impl<'a> Builder<'a> {
             use_levels,
             context: &context,
         });
-        let no_kern = [wordcraft_fonts::feature_value(b"kern", 0)];
         for (a, b, key) in segs {
             let Some(sub) = text.get(a..b) else { continue };
             let rc = match (&rc_cs, key.complex) {
@@ -276,22 +275,10 @@ impl<'a> Builder<'a> {
                     c
                 }
             };
-            // The shaper kerns by default; Word kerns only when Kerning for fonts covers the size.
-            // Without `w14:ligatures` the shaper's default (standard and contextual) stays.
-            let [kern_off] = no_kern;
-            // Khmer shaping builds its syllables (pre-base vowels, stacked signs) in `liga` and
-            // `clig`, so a run's ligature setting never reaches Khmer text: Word ignores it there.
-            let ligatures = rc.ligatures.filter(|_| !shape_text.chars().any(is_khmer));
-            let all = match ligatures {
-                Some(l) => {
-                    let [a, b, c, d] = ligature_features(l);
-                    [kern_off, a, b, c, d]
-                }
-                None => [kern_off; 5],
-            };
-            let from = usize::from(rc.kerned());
-            let to = if ligatures.is_some() { all.len() } else { 1 };
-            let features: &[wordcraft_fonts::Feature] = all.get(from..to).unwrap_or_default();
+            let features = shaping_features(rc);
+            // Khmer syllable construction uses liga/clig, not optional Latin typography.
+            // Keep the existing script exception; never disable required syllable shaping.
+            let features = if shape_text.chars().any(is_khmer) { &features[..1] } else { &features[..] };
             let shaped = if use_levels {
                 wordcraft_fonts::shape_run(&st.face, shape_text, features, map, key.rtl)
             } else {
