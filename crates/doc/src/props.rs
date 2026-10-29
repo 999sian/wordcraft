@@ -105,6 +105,26 @@ mod tests {
     }
 
     #[test]
+    fn saved_ligature_flags_migrate_to_names() {
+        use serde_json::{from_value, json, to_value};
+        for mode in Ligatures::ALL {
+            let (standard, contextual, historical, discretional) = mode.features();
+            let props: CharProps = from_value(json!({"ligatures": {
+                "standard": standard, "contextual": contextual, "historical": historical, "discretional": discretional
+            }}))
+            .unwrap();
+            assert_eq!(props.ligatures, Some(mode));
+            assert_eq!(to_value(props).unwrap(), json!({"ligatures": mode.as_ooxml()}));
+        }
+        for (flags, expected) in [(json!({}), Ligatures::None), (json!({"contextual": true}), Ligatures::Contextual)] {
+            assert_eq!(from_value::<Ligatures>(flags).unwrap(), expected);
+        }
+        for bad in [json!({"standard": "true"}), json!({"contextual": null}), json!(true), json!(4), json!([]), json!("Standard")] {
+            assert!(from_value::<Ligatures>(bad).is_err());
+        }
+    }
+
+    #[test]
     fn text_direction_names() {
         let mut d = TextDirection::Horizontal;
         for _ in 0..3 {

@@ -51,7 +51,10 @@ Without either parameter it toggles; `minSize` alone enables kerning at that thr
 `format.ligatures {"mode": "standardContextual"}` selects any of the 16 OOXML
 ligature names, including `none` and `all`. Unknown names fail without editing.
 The `format.set` character property is now a camelCase string:
-`{"props": {"ligatures": "none"}}`, not a flag object.
+`{"props": {"ligatures": "none"}}`, not a flag object. `styles.modify` uses the
+same string in `chr.ligatures`. Legacy flag objects remain readable in saved JSON
+documents and recovery snapshots; saving migrates them to strings. Commands
+reject flag objects, including in tracked formatting's previous properties.
 `format.state` returns `kerning`, `kernMinSize`, and `ligatures`; a value is `null`
 when the selection disagrees. These command contracts also apply to the CLI and
 control channel. New documents explicitly declare kerning from 1 pt and

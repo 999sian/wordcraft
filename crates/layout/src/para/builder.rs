@@ -1,7 +1,6 @@
 use super::bidi::{Dir, bidi_levels, strong_rtl, visual_order};
 use super::chars::{
-    SegKey, caps_expands, context_digit_dirs, is_khmer, is_mark, is_numeral_digit, lookup_family, remap_range, shaping_features, thai_run_face,
-    upper_char,
+    SegKey, caps_expands, context_digit_dirs, is_mark, is_numeral_digit, lookup_family, remap_range, shaping_features, thai_run_face, upper_char,
 };
 use super::grid::east_asian;
 use super::model::{ClKind, Cluster, Enclosed, Glyph, ParaEnv, RubyLayout, StyleRun, SymbolRun};
@@ -275,10 +274,8 @@ impl<'a> Builder<'a> {
                     c
                 }
             };
-            let features = shaping_features(rc);
-            // Khmer syllable construction uses liga/clig, not optional Latin typography.
-            // Keep the existing script exception; never disable required syllable shaping.
-            let features = if shape_text.chars().any(is_khmer) { &features[..1] } else { &features[..] };
+            let (features, count) = shaping_features(rc, shape_text);
+            let features = &features[..count];
             let shaped = if use_levels {
                 wordcraft_fonts::shape_run(&st.face, shape_text, features, map, key.rtl)
             } else {

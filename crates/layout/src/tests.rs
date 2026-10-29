@@ -6205,6 +6205,46 @@ fn graphic_items_draw_inside_the_object() {
 }
 
 #[test]
+fn graphic_khmer_text_preserves_script_defaults() {
+    use wordcraft_doc::graphic::{Graphic, GraphicItem, TextAlign};
+    use wordcraft_doc::props::Ligatures;
+    // A mixed label makes the exception observable with a bundled font's contextual
+    // substitutions, without depending on an installed Khmer font.
+    let text = "-> != === \u{1780}";
+    let face = wordcraft_fonts::word::resolve("JetBrains Mono", false, false).face;
+    let gids = |features: &[wordcraft_fonts::Feature]| wordcraft_fonts::shape(&face, text, features, |c| c).iter().map(|g| g.gid).collect::<Vec<_>>();
+    let expected = gids(&[]);
+    assert_ne!(expected, gids(&[wordcraft_fonts::feature_value(b"calt", 0)]), "the font makes disabling calt observable");
+    let graphic = Graphic {
+        items: vec![GraphicItem::Text {
+            rect: [0.0, 0.0, 216.0, 30.0],
+            text: text.into(),
+            size: 12.0,
+            color: Rgb::BLACK,
+            bold: false,
+            align: TextAlign::Left,
+            font: Some("JetBrains Mono".into()),
+        }],
+        ..Default::default()
+    };
+    let mut d = Document::new();
+    let object = InlineObject::Graphic { w: 216.0, h: 30.0, alt: String::new(), float: Default::default(), graphic: Arc::new(graphic) };
+    d.insert_object(&Pos::body(0, 0), object, &Default::default()).unwrap();
+    for mode in [Ligatures::None, Ligatures::All] {
+        d.styles.default_chr.ligatures = Some(mode);
+        let draws = flat(display::page_display(&d, &lay(&d).pages[0], &Default::default()));
+        let actual = draws
+            .iter()
+            .find_map(|draw| match draw {
+                display::Draw::Glyphs { text: label, glyphs, .. } if label == text => Some(glyphs.iter().map(|g| g.0).collect::<Vec<_>>()),
+                _ => None,
+            })
+            .expect("graphic text");
+        assert_eq!(actual, expected, "{mode:?} must not override Khmer script defaults");
+    }
+}
+
+#[test]
 fn graphic_text_in_a_degenerate_rectangle_is_not_drawn() {
     use wordcraft_doc::graphic::{Graphic, GraphicItem, GraphicKind, TextAlign};
     use wordcraft_doc::props::Rgb;

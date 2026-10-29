@@ -55,6 +55,10 @@ fn format_kerning_and_ligatures_commands() {
         ("format.kerning", json!({"minSize": "bad"})),
         ("format.kerning", json!({"value": "bad"})),
         ("format.set", json!({"props": {"ligatures": "bogus"}})),
+        ("format.set", json!({"props": {"ligatures": {"standard": true}}})),
+        ("format.set", json!({"props": {"fmtChange": {"rev": 0, "old": {"ligatures": {"standard": true}}}}})),
+        ("styles.modify", json!({"style": "Normal", "chr": {"ligatures": {"standard": true}}})),
+        ("styles.modify", json!({"style": "Normal", "chr": {"fmtChange": {"rev": 0, "old": {"ligatures": {}}}}})),
     ] {
         assert!(s.run(command, &params).is_err(), "{command}: {params}");
         assert_eq!(serde_json::to_value(&s.doc).unwrap(), snapshot);
@@ -63,4 +67,22 @@ fn format_kerning_and_ligatures_commands() {
     run(&mut s, "format.clear", json!({}));
     let p = s.doc.para_at(&Pos::body(0, 0)).unwrap();
     assert!(p.runs.iter().all(|r| r.props.ligatures.is_none() && r.props.kern.is_none()));
+}
+
+#[test]
+fn legacy_json_ligatures_open_and_save_as_names() {
+    let legacy = json!({
+        "body": [{"kind": "para", "text": "office", "runs": [{"len": 6, "props": {"ligatures": {"standard": true}}}]}],
+        "styles": {"defaultChr": {"ligatures": {"contextual": true}}}
+    });
+    let doc = crate::io::open_bytes("legacy.json", &serde_json::to_vec(&legacy).unwrap()).unwrap();
+    assert_eq!(doc.plain_text(wordcraft_doc::StoryRef::Body), "office");
+    assert_eq!(doc.para_at(&Pos::body(0, 0)).unwrap().runs[0].props.ligatures, Some(Ligatures::Standard));
+    assert_eq!(doc.styles.default_chr.ligatures, Some(Ligatures::Contextual));
+    let saved = crate::io::save_bytes("updated.json", &doc).unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&saved).unwrap();
+    assert_eq!(json["body"][0]["runs"][0]["props"]["ligatures"], "standard");
+    assert_eq!(json["styles"]["defaultChr"]["ligatures"], "contextual");
+    let reopened = crate::io::open_bytes("updated.json", &saved).unwrap();
+    assert_eq!(reopened, doc);
 }

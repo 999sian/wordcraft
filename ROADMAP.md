@@ -1,6 +1,6 @@
 # WordCraft roadmap
 
-> **Font Advanced update:** 2026-10-29 · Kerning fonts and all 16 ligature selections are available in the Font dialog and through commands. New documents explicitly declare standard/contextual ligatures; imported documents without a selection resolve to none. Readiness estimates unchanged.
+> **Font Advanced update:** 2026-10-29 · Kerning fonts and all 16 ligature selections are available in the Font dialog and through commands. New documents explicitly declare standard/contextual ligatures; imported documents without a selection resolve to none. Legacy JSON/recovery ligature flags migrate on read while commands remain string-only; paragraph and graphic text share the Khmer shaping exception. Readiness estimates unchanged.
 
 > **Highlight update:** 2026-10-25 · Highlight shortcut toggles the last chosen colour off when the whole selection has it; explicit colour commands remain setters (#4085). Readiness estimates unchanged.
 
@@ -143,6 +143,7 @@ Ranked, to beta (detail and remaining milestones in [docs/roadmap.md](docs/roadm
 ## Progress log
 
 - 2026-10-29: Font › Advanced: Kerning fonts (0.5–1638 pt threshold) and all 16 ligature selections, including mixed selections and undo. `format.kerning`, `format.ligatures`, and `format.set` expose the same settings to CLI/MCP/control clients. DOCX preserves every selection; new document defaults explicitly request kerning from 1 pt and standard/contextual ligatures. Optional contextual shaping uses `calt`; required script shaping, including Khmer syllable construction, stays enabled. Synthetic DOCX, command, cache-invalidation, substitution, and rendered-dialog checks cover the change; no new Word compatibility-prompt check.
+- 2026-10-29: PR #4807 review follow-up: saved JSON and recovery snapshots retain old Boolean ligature selections and write enum names on their next save; formatting and style commands still require strings. Graphic text now shares the paragraph path's Khmer feature exception. Regression checks cover all 16 persisted combinations, legacy JSON save/reopen, recovery restore, rejected command objects and contextual substitutions in mixed-script graphic labels. CLI JSON/DOCX/PDF and pixel-identical None/All diagram-render smoke checks pass; broader script shaping is unchanged.
 
 Local release-mode shaping probe (Linux, bundled fonts, 1,000 paragraphs / 308 pages, median of 11 runs; timings are not a cross-machine guarantee):
 
@@ -657,7 +658,7 @@ Footer page-table height and body wrapping are corrected. Other pagination gaps 
 
 | Date | Change | Summary |
 |---|---|---|
-| 2026-10-29 | trivial | Font Advanced commands and all 16 ligature choices; explicit new-document defaults, schema-default imported documents, synthetic and rendered-dialog checks, local layout timing recorded; readiness estimates unchanged |
+| 2026-10-29 | trivial | Font Advanced commands and all 16 ligature choices; explicit defaults, legacy JSON/recovery migration with string-only commands, shared Khmer graphic/paragraph shaping exception; synthetic, rendered-dialog and CLI round-trip checks, local layout timing recorded; readiness estimates unchanged |
 | 2026-10-22 | trivial | Progress log: one native window per open document |
 | 2026-10-22 | trivial | Progress log: every open document keeps its own recovery copy |
 | 2026-10-22 | trivial | Progress log: several open documents in the desktop window |

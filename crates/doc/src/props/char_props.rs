@@ -62,7 +62,7 @@ impl Underline {
 }
 
 /// OpenType ligature selection ([MS-DOCX] `w14:ligatures`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum Ligatures {
     #[default]
@@ -82,6 +82,42 @@ pub enum Ligatures {
     StandardHistoricalDiscretional,
     ContextualHistoricalDiscretional,
     All,
+}
+
+impl<'de> Deserialize<'de> for Ligatures {
+    /// Migrate saved flag objects on read; new documents always write the enum name.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::{Error, MapAccess, Unexpected, Visitor, value::MapAccessDeserializer};
+
+        #[derive(Default, Deserialize)]
+        #[serde(default)]
+        struct Flags {
+            standard: bool,
+            contextual: bool,
+            historical: bool,
+            discretional: bool,
+        }
+
+        struct V;
+        impl<'de> Visitor<'de> for V {
+            type Value = Ligatures;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a ligature selection name or saved ligature flags")
+            }
+
+            fn visit_str<E: Error>(self, s: &str) -> Result<Ligatures, E> {
+                Ligatures::ALL.into_iter().find(|l| l.as_ooxml() == s).ok_or_else(|| E::invalid_value(Unexpected::Str(s), &self))
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Ligatures, A::Error> {
+                let flags = Flags::deserialize(MapAccessDeserializer::new(map))?;
+                let features = (flags.standard, flags.contextual, flags.historical, flags.discretional);
+                Ligatures::ALL.into_iter().find(|l| l.features() == features).ok_or_else(|| A::Error::custom("invalid ligature flags"))
+            }
+        }
+        d.deserialize_any(V)
+    }
 }
 
 impl Ligatures {
